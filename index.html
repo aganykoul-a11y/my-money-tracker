@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>My Money Tracker</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#f4f6f9;--card:#fff;--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--green:#16834b;--red:#c0392b;--accent:#315efb}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{max-width:860px;margin:auto;padding:16px 16px 40px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 2px 18px}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:14px;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:22px}
+h1{font-size:22px;line-height:1.1;margin:0}.sub{font-size:13px;color:var(--muted);margin-top:4px}.date{font-weight:700;font-size:13px;color:#374151;white-space:nowrap}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:var(--card);border:1px solid #eef0f3;border-radius:18px;padding:16px;box-shadow:0 5px 18px rgba(17,24,39,.05)}
+.label{font-size:12px;color:var(--muted);font-weight:650}.value{font-size:24px;font-weight:850;margin-top:5px;letter-spacing:-.5px}.income{color:var(--green)}.expense{color:var(--red)}
+.section{background:var(--card);border:1px solid #eef0f3;border-radius:18px;padding:17px;margin-top:13px;box-shadow:0 5px 18px rgba(17,24,39,.04)}
+.section h2{font-size:16px;margin:0 0 12px}
+.voice{background:var(--ink);color:#fff;border-radius:20px;padding:18px;margin-top:13px;text-align:center}
+.mic{width:70px;height:70px;border:0;border-radius:50%;background:#fff;font-size:29px;box-shadow:0 5px 18px rgba(0,0,0,.18)}
+.mic.listening{background:#ffe1dc;animation:pulse 1s infinite}@keyframes pulse{50%{transform:scale(1.06)}}
+#status{font-size:14px;margin-top:10px}.hint{font-size:12px;color:#b9c2d0;margin-top:5px}
+.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{min-width:0}
+input,select{flex:1;padding:12px;border:1px solid #d9deea;border-radius:11px;background:#fff;color:var(--ink);outline:none}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(49,94,251,.10)}
+.btn{border:0;border-radius:11px;padding:12px 17px;font-weight:750;background:var(--accent);color:#fff}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.toolbar input{flex:2}.toolbar select{flex:1}
+.secondary{border:1px solid var(--line);background:#f7f8fa;color:var(--ink);border-radius:11px;padding:11px 13px;font-weight:700}
+.danger{border:1px solid #f1c7c3;background:#fff7f6;color:var(--red);border-radius:11px;padding:11px 13px;font-weight:700}
+.entry{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #edf0f5}
+.entry:last-child{border-bottom:0}.entry-title{font-weight:750}.entry small{display:block;color:#7b8494;margin-top:4px}
+.entry-right{text-align:right;white-space:nowrap}.delete{border:0;background:none;color:#9aa3b2;padding:4px 0;font-size:12px}
+.empty{text-align:center;color:#7b8494;padding:24px 10px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary>div{padding:12px;border-radius:13px;background:#f8fafc}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 15px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;box-shadow:0 8px 25px rgba(0,0,0,.2)}
+.toast.show{opacity:1}
+@media(max-width:650px){.app{padding:12px 12px 30px}.cards{grid-template-columns:1fr}.card{padding:14px}.summary{grid-template-columns:1fr}.top{align-items:flex-start}.date{font-size:12px}.row>*{flex:1 1 44%}.btn{flex:1 1 100%}.toolbar>*{flex:1 1 45%}.toolbar input{flex-basis:100%}}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#172033">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="logo">💰</div><div><h1>My Money Tracker</h1><div class="sub">Private • stored on this device</div></div></div>
+    <div class="date" id="today"></div>
+  </header>
+
+  <div class="cards">
+    <div class="card"><div class="label">Today's income</div><div class="value income" id="income">$0.00</div></div>
+    <div class="card"><div class="label">Today's spending</div><div class="value expense" id="spending">$0.00</div></div>
+    <div class="card"><div class="label">Today's net</div><div class="value" id="net">$0.00</div></div>
+  </div>
+
+  <div class="voice">
+    <button class="mic" id="mic" aria-label="Add transaction by voice">🎙️</button>
+    <div id="status">Tap the microphone and speak</div>
+    <button class="secondary" id="enableMic" style="margin-top:10px;display:none">🎙️ Enable Microphone</button>
+    <div class="hint">Try: “I spent $18 on gas” or “I made $120 from work.”</div>
+  </div>
+
+  <section class="section">
+    <h2>Add a transaction</h2>
+    <div class="row">
+      <select id="type" aria-label="Transaction type"><option value="expense">Expense</option><option value="income">Income</option></select>
+      <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Amount" aria-label="Amount">
+      <input id="note" placeholder="What was it for?" aria-label="Note">
+      <button class="btn" id="add">Add transaction</button>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Transaction history</h2>
+    <div class="toolbar">
+      <input id="search" placeholder="Search..." aria-label="Search transactions">
+      <select id="filter" aria-label="Filter transactions"><option value="all">All</option><option value="income">Income</option><option value="expense">Expenses</option></select>
+      <button class="secondary" id="export">Export CSV</button>
+      <button class="danger" id="clear">Clear all</button>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <section class="section">
+    <h2>All-time totals</h2>
+    <div class="summary">
+      <div><div class="label">Income</div><div class="value income" id="allIncome">$0.00</div></div>
+      <div><div class="label">Expenses</div><div class="value expense" id="allExpense">$0.00</div></div>
+      <div><div class="label">Net</div><div class="value" id="allNet">$0.00</div></div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='my_money_tracker_v1';
+let entries=JSON.parse(localStorage.getItem(KEY)||'[]');
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n)||0);
+const dateKey=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+const today=dateKey(new Date());
+$('today').textContent=new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1800)}
+function save(){localStorage.setItem(KEY,JSON.stringify(entries));render()}
+function addEntry(type,amount,note){
+  amount=Number(amount);
+  if(!amount||amount<=0){$('status').textContent='Please enter an amount.';return false}
+  entries.push({id:Date.now()+Math.random(),type,amount,note:(note||'Uncategorized').trim(),time:new Date().toISOString()});
+  save(); return true;
+}
+$('add').onclick=()=>{if(addEntry($('type').value,$('amount').value,$('note').value)){ $('amount').value='';$('note').value='';toast('Transaction added')}};
+$('amount').addEventListener('keydown',e=>{if(e.key==='Enter')$('add').click()});
+$('note').addEventListener('keydown',e=>{if(e.key==='Enter')$('add').click()});
+$('search').oninput=render;$('filter').onchange=render;
+
+function render(){
+  const todayEntries=entries.filter(e=>dateKey(e.time)===today);
+  const inc=todayEntries.filter(e=>e.type==='income').reduce((s,e)=>s+Number(e.amount),0);
+  const exp=todayEntries.filter(e=>e.type==='expense').reduce((s,e)=>s+Number(e.amount),0);
+  $('income').textContent=money(inc);$('spending').textContent=money(exp);$('net').textContent=money(inc-exp);
+  const ai=entries.filter(e=>e.type==='income').reduce((s,e)=>s+Number(e.amount),0);
+  const ae=entries.filter(e=>e.type==='expense').reduce((s,e)=>s+Number(e.amount),0);
+  $('allIncome').textContent=money(ai);$('allExpense').textContent=money(ae);$('allNet').textContent=money(ai-ae);
+
+  const q=$('search').value.toLowerCase().trim(), f=$('filter').value;
+  const list=entries.filter(e=>(f==='all'||e.type===f)&&(`${e.note} ${e.type}`.toLowerCase().includes(q))).slice().reverse();
+  $('list').innerHTML=list.length?list.map(e=>`
+    <div class="entry">
+      <div><div class="entry-title">${e.type==='income'?'Income':'Expense'}</div>
+      <small>${escapeHtml(e.note)} • ${new Date(e.time).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</small></div>
+      <div class="entry-right"><b class="${e.type}">${e.type==='income'?'+':'-'}${money(e.amount)}</b><br>
+      <button class="delete" onclick="del('${e.id}')">Delete</button></div>
+    </div>`).join(''):'<div class="empty">No matching transactions yet.</div>';
+}
+function del(id){entries=entries.filter(e=>String(e.id)!==String(id));save();toast('Transaction deleted')}
+$('clear').onclick=()=>{if(entries.length&&confirm('Delete all transactions? This cannot be undone.')){entries=[];save();toast('All transactions cleared')}};
+
+$('export').onclick=()=>{
+  const rows=[['Date','Type','Amount','Note'],...entries.map(e=>[e.time,e.type,e.amount,e.note])];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='my-money-tracker.csv';a.click();URL.revokeObjectURL(a.href);toast('CSV exported');
+};
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let recognition=null;
+let recognitionBusy=false;
+
+function isSecureEnough(){
+  return window.isSecureContext || location.hostname==='localhost' || location.hostname==='127.0.0.1';
+}
+
+async function requestMicPermission(){
+  if(!isSecureEnough()){
+    $('status').textContent='Microphone requires a secure Chrome page (HTTPS). This local file cannot request it.';
+    $('enableMic').style.display='inline-block';
+    return false;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    $('status').textContent='Chrome does not expose microphone access on this page. Open the app from an HTTPS address.';
+    $('enableMic').style.display='inline-block';
+    return false;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    stream.getTracks().forEach(track=>track.stop());
+    $('enableMic').style.display='none';
+    return true;
+  }catch(err){
+    const name=err && err.name ? err.name : '';
+    $('enableMic').style.display='inline-block';
+    if(name==='NotAllowedError'||name==='PermissionDeniedError'){
+      $('status').textContent='Chrome blocked the microphone. Allow Microphone for this site in Chrome, then tap Enable Microphone again.';
+    }else if(name==='NotFoundError'){
+      $('status').textContent='No microphone was found on this device.';
+    }else{
+      $('status').textContent='Chrome could not access the microphone. Check Chrome microphone permission and try again.';
+    }
+    return false;
+  }
+}
+
+async function startVoice(){
+  if(!recognition){
+    $('status').textContent='Voice input requires Chrome on Android.';
+    return;
+  }
+  if(recognitionBusy)return;
+  recognitionBusy=true;
+  $('mic').classList.add('listening');
+  $('status').textContent='Checking microphone…';
+
+  const ok=await requestMicPermission();
+  if(!ok){
+    recognitionBusy=false;
+    $('mic').classList.remove('listening');
+    return;
+  }
+
+  try{
+    recognition.start();
+  }catch(err){
+    recognitionBusy=false;
+    $('mic').classList.remove('listening');
+    $('status').textContent='Tap the microphone once, then speak.';
+  }
+}
+
+if(!SR){
+  $('status').textContent='Voice input needs Chrome on Android. You can still use manual entry.';
+}else{
+  recognition=new SR();
+  recognition.lang='en-US';
+  recognition.interimResults=false;
+  recognition.maxAlternatives=1;
+  recognition.continuous=false;
+  $('mic').onclick=startVoice;
+
+  recognition.onstart=()=>{
+    recognitionBusy=true;
+    $('mic').classList.add('listening');
+    $('status').textContent='Listening… Speak now.';
+  };
+
+  recognition.onresult=e=>{
+    const text=e.results[0][0].transcript;
+    $('status').textContent='Heard: “'+text+'”';
+    parseVoice(text);
+  };
+
+  recognition.onerror=e=>{
+    const msg=e && e.error;
+    if(msg==='not-allowed'||msg==='service-not-allowed'){
+      $('status').textContent='Chrome blocked voice access. Tap Enable Microphone and choose Allow for this site.';
+      $('enableMic').style.display='inline-block';
+    }else if(msg==='no-speech'){
+      $('status').textContent='I didn’t hear anything. Tap again and speak clearly.';
+    }else if(msg==='network'){
+      $('status').textContent='Voice recognition needs an internet connection. Check your connection and try again.';
+    }else{
+      $('status').textContent='Voice error. Tap again and try once more.';
+    }
+  };
+
+  recognition.onend=()=>{
+    recognitionBusy=false;
+    $('mic').classList.remove('listening');
+  };
+}
+
+function parseVoice(text){
+ const t=text.toLowerCase();
+ const type=/\b(spent|spend|paid|bought|purchase|cost|expense|gas|grocer|rent|bill|parking)\b/.test(t)?'expense':
+            /\b(earned|made|income|received|got paid|drove|delivery|uber|lyft)\b/.test(t)?'income':null;
+ const m=t.match(/(?:\$|usd\s*)?(\d+(?:\.\d{1,2})?)/);
+ if(!type||!m){$('status').textContent='Try “I spent $20 on gas” or “I earned $120 today.”';return}
+ const amount=Number(m[1]);
+ const note=text.replace(m[0],'').replace(/\b(i|spent|spend|paid|bought|purchase|cost|expense|earned|made|income|received|got paid|today|drove|dollars?|bucks?)\b/gi,' ').replace(/\s+/g,' ').trim();
+ if(addEntry(type,amount,note||'Voice entry')){$('status').textContent=`Added ${type}: ${money(amount)}`;toast('Voice transaction added')}
+}
+
+$('enableMic').onclick=async()=>{
+  $('status').textContent='Requesting microphone permission…';
+  const ok=await requestMicPermission();
+  if(ok){
+    $('status').textContent='Microphone enabled. Tap 🎙️ and speak.';
+    toast('Microphone enabled');
+  }
+};
+render();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
